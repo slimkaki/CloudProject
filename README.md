@@ -8,6 +8,8 @@ Computação em Nuvem
 
 **Professor:** Raul Ikeda
 
+**Anotações:** https://www.notion.so/Projeto-Cloud-e08415816e3e479ab61cb5fd7c57a074
+
 _____
 
 Requisitos do projeto:
