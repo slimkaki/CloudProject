@@ -1,7 +1,4 @@
-import boto3
-import json
-import time
-import paramiko
+import boto3, json, time, paramiko
 
 class Cloud(object):
     """
@@ -17,6 +14,7 @@ class Cloud(object):
         # Variáveis globais
         self.instances = {}
         self.security_groups = {}
+        self.myIPs = []
         self.region = region
         self.ami_ubuntu18 = "ami-0817d428a6fb68645"
         
@@ -33,13 +31,28 @@ class Cloud(object):
         self.session = boto3.session.Session(aws_access_key_id=self.ACCESSKEY,
                                         aws_secret_access_key=self.SECRETACCESSKEY,
                                         region_name=self.region)
+
+    def generateRSA(self, keyname):
+        try:
+            key = self.client.get_all_key_pairs(keynames=[keyname])[0]
+            priv_file = open("./credentials/id_rsa", "w")
+            priv_file.write(key.decode("utf-8"))
+            priv_file.close()
+
+        except Exception:
+            self.client.create_key_pair(KeyName=keyname)
+            key = self.client.get_all_key_pairs(keynames=[keyname])[0]
+            priv_file = open("./credentials/id_rsa", "w")
+            priv_file.write(key.decode("utf-8"))
+            priv_file.close()
         
-    def describeInstances(self):
-        print("Describing instances: ")
-        response = self.ec2_resource.describe_instances()
-        # inst_names = [tag['Value'] for i in vpc.instances.all() for tag in i.tags if tag['Key'] == 'Name']
-        # print(inst_names)
-        print(response)
+    def getPublicIP(self, instance_id):
+        print("Getting IPs of the instances... ")
+        res = self.client.describe_instances(InstanceIds=[instance_id,])
+        ip = res['Reservations'][0]['Instances'][0]['PublicIpAddress']
+        self.myIPs.append(ip)
+        print(f"O ip é: {ip}")
+        return ip 
 
     def createSecurityGroup(self, group_name, ports = [22]):
         IPperm = []
@@ -67,30 +80,30 @@ class Cloud(object):
                                                       TagSpecifications=[tags,],
                                                       SecurityGroupIds=[secGroup])
 
-        self.instances[instance[0].instance_id] = instance[0]
-        print(self.instances)
+        for i in range(numInst):
+            self.instances[instance[i].instance_id] = instance[0]
+            print(instance[0])
     
-    def connectToInstance(self, instance_id):
-        key = paramiko.RSAKey.from_private_key_file("~/.ssh/rafak")
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    def connectToInstance(self, instance_ip):
+        print(f"Time to connect via ssh to {instance_ip}...")
+        print(type(instance_ip))
+        key = paramiko.RSAKey.from_private_key_file("../../../../../../.ssh/rafak", password="abacaxienois")
+        pclient = paramiko.SSHClient()
+        pclient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         # Connect/ssh to an instance
         try:
             # Here 'ubuntu' is user name and 'instance_ip' is public IP of EC2
-            client.connect(hostname=self.instances[instance_id].instance_ip, username="ubuntu", pkey=key)
-
+            pclient.connect(hostname=str(instance_ip), username="ubuntu", pkey=key, passphrase="abacaxienois")
+            print("Conectei!")
             # Execute a command(cmd) after connecting/ssh to an instance
-            stdin, stdout, stderr = client.exec_command(cmd)
-            print stdout.read()
+            stdin, stdout, stderr = pclient.exec_command("ls -la")
+            print(stdout.read())
 
             # close the client connection once the job is done
-            client.close()
-            break
-
-        except Exception, e:
-            print e
-        return 0
+            pclient.close()
+        except Exception as e:
+            print(e)
 
     def terminateInstances(self):
         for i in self.instances:
