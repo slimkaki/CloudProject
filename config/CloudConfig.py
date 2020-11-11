@@ -1,4 +1,4 @@
-import boto3, json, time, paramiko
+import boto3, json, time, paramiko, os
 
 class Cloud(object):
     """
@@ -32,20 +32,26 @@ class Cloud(object):
                                         aws_secret_access_key=self.SECRETACCESSKEY,
                                         region_name=self.region)
 
-    def generateRSA(self, keyname):
-        try:
-            key = self.client.get_all_key_pairs(keynames=[keyname])[0]
-            priv_file = open("./credentials/id_rsa", "w")
-            priv_file.write(key.decode("utf-8"))
-            priv_file.close()
+    def loadRSA(self, keyname):
+        keypairs = self.client.describe_key_pairs()
+        for i in keypairs["KeyPairs"]:
+            print(i)
+            if (i["KeyName"] == keyname):
+                print("CHAVE EXISTE")
+                return
+        print("Não achei a chave :(")
+        print("Criando uma nova chave")
+        key = self.client.create_key_pair(KeyName=keyname)
+        self.path = "./credentials/{}.pem".format(keyname)
 
-        except Exception:
-            self.client.create_key_pair(KeyName=keyname)
-            key = self.client.get_all_key_pairs(keynames=[keyname])[0]
-            priv_file = open("./credentials/id_rsa", "w")
-            priv_file.write(key.decode("utf-8"))
-            priv_file.close()
-        
+        if (os.path.isfile(self.path)):
+            os.remove(self.path)
+        priv_file = open(self.path, "w")
+        priv_file.write(key['KeyMaterial'])
+        priv_file.close()
+        print("Chave disponível em:", self.path)
+        return
+
     def getPublicIP(self, instance_id):
         print("Getting IPs of the instances... ")
         res = self.client.describe_instances(InstanceIds=[instance_id,])
@@ -66,17 +72,17 @@ class Cloud(object):
             group_id = response['GroupId']
             self.client.authorize_security_group_ingress(GroupId=group_id, IpPermissions = IPperm)
             self.security_groups[group_name] = response
-            print("response sec group: ", response)
+            # print("response sec group: ", response)
         except Exception as e:
             print(f"Client Error: {e}")
 
-    def createInstance(self, instanceType, tags, secGroup, numInst = 1):
+    def createInstance(self, instanceType, tags, secGroup, myKey, numInst = 1):
         print("Criando Instancia:")
         instance = self.ec2_resource.create_instances(ImageId=self.ami_ubuntu18,
                                                       MinCount=numInst,
                                                       MaxCount=numInst,
                                                       InstanceType=instanceType,
-                                                      KeyName="rafak",
+                                                      KeyName=myKey,
                                                       TagSpecifications=[tags,],
                                                       SecurityGroupIds=[secGroup])
 
@@ -86,18 +92,19 @@ class Cloud(object):
     
     def connectToInstance(self, instance_ip):
         print(f"Time to connect via ssh to {instance_ip}...")
-        print(type(instance_ip))
-        key = paramiko.RSAKey.from_private_key_file("../../../../../../.ssh/rafak", password="abacaxienois")
+        key = paramiko.RSAKey.from_private_key_file(self.path)
         pclient = paramiko.SSHClient()
         pclient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         # Connect/ssh to an instance
         try:
             # Here 'ubuntu' is user name and 'instance_ip' is public IP of EC2
-            pclient.connect(hostname=str(instance_ip), username="ubuntu", pkey=key, passphrase="abacaxienois")
+            pclient.connect(hostname=str(instance_ip), username="ubuntu", pkey=key)
             print("Conectei!")
             # Execute a command(cmd) after connecting/ssh to an instance
             stdin, stdout, stderr = pclient.exec_command("ls -la")
+            print(stdout.read())
+            stdin, stdout, stderr = pclient.exec_command("whoami")
             print(stdout.read())
 
             # close the client connection once the job is done

@@ -28,11 +28,13 @@ def main():
     
     myCloud = Cloud(secrets["AWSUSER"], secrets["AWSPASS"], 
                     secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"])
-    checkAndCreateRSA(myCloud)
+    # checkAndCreateRSA(myCloud)
+    chave = "botorafak"
+    myCloud.loadRSA(chave)
     myTags = {'ResourceType': 'instance','Tags': [{'Key': 'rafaKeyTagTeste','Value': 'rafaValueTagTeste'},]}
     myCloud.createSecurityGroup("sec_kaki")
     secGroup =  myCloud.security_groups["sec_kaki"]["GroupId"]
-    myCloud.createInstance("t2.micro", myTags, secGroup)
+    myCloud.createInstance("t2.micro", myTags, secGroup, chave)
     # myCloud.createInstance("t2.micro", myTags, secGroup)
     print("sleeping for 120 seconds")
     t0 = time.time()
@@ -43,8 +45,8 @@ def main():
         myCloud.getPublicIP(i)
     print("myIPs = ", myCloud.myIPs)
     myCloud.connectToInstance(myCloud.myIPs[0])
-    # myCloud.describeInstances()
-    # myCloud.terminateInstances()
+    
+    myCloud.terminateInstances()
 
 if __name__ == '__main__':
     main()
