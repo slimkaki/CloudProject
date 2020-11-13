@@ -5,8 +5,9 @@ sudo apt install python3-pip -y
 git clone https://github.com/raulikeda/tasks.git
 echo "clonei" > clone.txt
 cd tasks/portfolio/
-sed -i "s/'HOST': 'node1',/'HOST': '172.31.25.125',/g" settings.py
+sed -i "s/'HOST': 'node1',/'HOST': '<replace me with ip>',/g" settings.py
 cd ..
+echo "sudo reboot" >> install.sh
 chmod +x install.sh
 ./install.sh
 echo "instalei tudo do git" > fim.txt

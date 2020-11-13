@@ -43,10 +43,21 @@ Problema: Checar se usuário cloud existe no postgresql
 sudo su - postgres
 postgrespsql -U postgres
 \du
+# Caso o usuario tenha sido criado
+\quit
+createdb -O cloud tasks
+exit
+sudo ufw allow 5432/tcp
+sudo systemctl restart postgresql
+```
+entra na instancia do django:
+
+```sh
+cd tasks
+./install.sh
 ```
 
 Túnel final:
-
 ```
 ssh -i ./credentials/botorafak.pem ubuntu@<IP público Instância do Django> -L 8001:localhost:8080
 ```

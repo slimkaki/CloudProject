@@ -3,7 +3,7 @@ cd /home/ubuntu/
 sudo apt update
 sudo apt install postgresql postgresql-contrib -y
 sudo su - postgres
-psql -c "CREATE USER cloud WITH PASSWORD 'cloud';"
+psql -U postgres -c "CREATE USER cloud WITH PASSWORD 'cloud';"
 createdb -O cloud tasks
 sed -e "s/#listen_addresses = 'localhost'.*$/listen_addresses = '*'/g" /etc/postgresql/10/main/postgresql.conf > /etc/postgresql/10/main/aa.conf
 cat /etc/postgresql/10/main/aa.conf > /etc/postgresql/10/main/postgresql.conf

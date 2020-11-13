@@ -66,7 +66,7 @@ class Cloud(object):
         """
         Retorna o endereço IPv4 de uma instância a partir de seu id
         instance_id: id da instância
-        ip_type: Ip público ("PublicIpAddress") ou privado ("PrivateIpAddress")
+        ip_type: Ip público ("PublicIpAddress") ou privado ("PrivateIpAddress") ou "PrivateDnsName"
         """
         print("Adquirindo os IP's das instâncias... ")
         res = self.client.describe_instances(InstanceIds=[instance_id,])
