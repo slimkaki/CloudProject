@@ -1,27 +1,6 @@
 import boto3, time, json, paramiko, os
 from CloudConfig import Cloud
 
-def checkAndCreateRSA(myCloud: Cloud):
-    """
-    Classe desnecessária (?)
-    Checa se existe já chave RSA
-    Caso existe: retorna.
-    Caso não existe: cria uma chave pública e outra privada
-    """
-    if (os.path.isfile("./credentials/id_rsa.pub")):
-        return 
-    else:
-        privateKey, publicKey = myCloud.generateRSA()
-        pub_file = open("./credentials/id_rsa.pub", "w")
-        pub_file.write(publicKey.decode("utf-8"))
-        pub_file.close()
-
-        priv_file = open("./credentials/id_rsa", "w")
-        priv_file.write(privateKey.decode("utf-8"))
-        priv_file.close()
-        return
-
-
 def main():
     with open("./credentials/credentials.json", "r") as file:
         secrets = json.load(file)

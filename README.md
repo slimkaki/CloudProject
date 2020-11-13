@@ -34,3 +34,19 @@ Requisitos do projeto:
   bibliotecas para manipulação de Cloud prontas.
 
   **7.** Entrega: Até a última aula (27/Nov/2020).
+
+___
+
+Problema: Checar se usuário cloud existe no postgresql
+
+```sh
+sudo su - postgres
+postgrespsql -U postgres
+\du
+```
+
+Túnel final:
+
+```
+ssh -i ./credentials/botorafak.pem ubuntu@<IP público Instância do Django> -L 8001:localhost:8080
+```
