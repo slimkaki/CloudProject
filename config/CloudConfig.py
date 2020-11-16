@@ -16,7 +16,7 @@ class Cloud(object):
         self.security_groups = {}
         self.myIPs = []
         self.region = region
-        self.ami_ubuntu18 = "ami-0817d428a6fb68645"
+        self.ami_ubuntu18_nv = "ami-0817d428a6fb68645"
         self.ami_ubuntu18_ohio = "ami-0dd9f0e7df0f0a138"
         self.local_ami = {}
         
@@ -27,7 +27,7 @@ class Cloud(object):
         """
         Inicia a sessão, os clients e os recursos.
         """
-        print("Time to log in!")
+        print(f"Iniciando sessão em {self.region}!")
         self.session = boto3.session.Session(aws_access_key_id=self.ACCESSKEY,
                                         aws_secret_access_key=self.SECRETACCESSKEY,
                                         region_name=self.region)
@@ -36,7 +36,7 @@ class Cloud(object):
         # self.ssm_client = boto3.client()
         self.client_load_balancer = boto3.client('elb', region_name=self.region)
 
-    def loadRSA(self, keyname):
+    def createRSA(self, keyname):
         """
         Checa se já existe uma chave com o nome passado na função,
         caso não exista, é criado um par e salvo a .pem no diretório
@@ -47,10 +47,7 @@ class Cloud(object):
         for i in keypairs["KeyPairs"]:
             print(i)
             if (i["KeyName"] == keyname):
-                print("CHAVE EXISTE")
                 return
-        print("Não achei a chave :(")
-        print("Criando uma nova chave")
         key = self.client.create_key_pair(KeyName=keyname)
         self.path = "./credentials/{}.pem".format(keyname)
 
@@ -60,7 +57,7 @@ class Cloud(object):
         priv_file.write(key['KeyMaterial'])
         priv_file.close()
         print("Chave disponível em:", self.path)
-        return
+        return 
 
     def getIP(self, instance_id, ip_type="PublicIpAddress"):
         """
@@ -92,7 +89,6 @@ class Cloud(object):
             group_id = response['GroupId']
             self.client.authorize_security_group_ingress(GroupId=group_id, IpPermissions = IPperm)
             self.security_groups[group_name] = response
-            # print("response sec group: ", response)
         except Exception as e:
             print(f"Client Error: {e}")
 
@@ -129,54 +125,6 @@ class Cloud(object):
         print("Retomando atividades!")
         return new_insts
     
-    def connectToInstance(self, instance_ip, script_name, instance_id):
-        """
-        conecta em uma instância e permite execução de comandos
-        na mesma.
-        instance_ip: endereço IPv4 da instância
-        """
-        print(f"Hora de conectar via SSH na instância: {instance_ip}...")
-        key = paramiko.RSAKey.from_private_key_file(self.path)
-        pclient = paramiko.SSHClient()
-        pclient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        instance_waiter = self.client.get_waiter('instance_status_ok')
-        instance_waiter.wait(InstanceIds=[instance_id])
-        # Connect/ssh to an instance
-        try:
-            # Here 'ubuntu' is user name and 'instance_ip' is public IP of EC2
-            pclient.connect(hostname=str(instance_ip), username="ubuntu", pkey=key)
-            print("Conectei!")
-
-            # Execute a command(cmd) after connecting/ssh to an instance
-            script_path = "./scripts/{}".format(script_name)
-            # print("script path:",script_path)
-            # with open(script_path, "r") as file:
-            #     commands = file.readlines()
-            # print("commands:",commands)
-            # for cmd in commands:
-            
-            stdin, stdout, stderr = pclient.exec_command("sudo apt update")
-            print("stdin:", stdin.read())
-            print("stdout:", stdout.read())
-            print("stderr:", stderr.read())
-
-            stdin.flush()
-            data = stdout.read().splitlines()
-            for line in data:
-                x = line.decode()
-                #print(line.decode())
-                print(x,i)
-                ssh.close()
-            
-            # stdin, stdout, stderr = pclient.exec_command("whoami")
-            # print(stdout.read())
-
-            # close the client connection once the job is done
-            pclient.close()
-        except Exception as e:
-            print(e)
-
     def createAMIfromInstance(self, instance_id, name):
         """
         Cria uma imagem de uma instancia (AMI).
@@ -195,7 +143,7 @@ class Cloud(object):
         self.client_load_balancer.create_load_balancer(LoadBalancerName=name,
                                                        AvailabilityZones=['us-east-1','us-east-2'],
                                                        SecurityGroups=[self.security_groups[sg]])
-
+    
     def terminateInstances(self, t_instances=None):
         """
         Encerra todas as instâncias que são passadas no argumento da função.
