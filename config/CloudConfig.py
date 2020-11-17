@@ -45,7 +45,6 @@ class Cloud(object):
         """
         keypairs = self.client.describe_key_pairs()
         for i in keypairs["KeyPairs"]:
-            print(i)
             if (i["KeyName"] == keyname):
                 return
         key = self.client.create_key_pair(KeyName=keyname)
@@ -92,7 +91,7 @@ class Cloud(object):
         except Exception as e:
             print(f"Client Error: {e}")
 
-    def createInstance(self, instanceType, tags, secGroup, myKey, user_data, ami=None, numInst = 1):
+    def createInstance(self, instanceType, tags, secGroup, myKey, user_data, ami, numInst = 1):
         """
         Cria uma nova instância.
         instanceType: flavor da instância (e.g. t2.micro, t2.large, ...)
@@ -102,8 +101,6 @@ class Cloud(object):
         ami: Imagem para criar a instância
         numInst (opcional): número de instâncias iguais a serem criadas
         """
-        if ami == None:
-            ami = self.ami_ubuntu18
         print("Criando Instancia:")
         instance = self.ec2_resource.create_instances(ImageId=ami,
                                                       MinCount=numInst,
@@ -133,6 +130,11 @@ class Cloud(object):
         """
         ami = self.client.create_image(InstanceId=instance_id, Name=name)
         self.local_ami[name] = ami['ImageId']
+        image = self.ec2_resource.get_all_images(image_ids=[ami['ImageId']][0])
+        print("Esperando para que a imagem fique pronta...")
+        self.ec2_resource.Image(ami['ImageId']).wait_until_exists()
+        return ami['ImageId']
+
 
     def createLoadBalancer(self, name, sg):
         """
@@ -144,6 +146,32 @@ class Cloud(object):
                                                        AvailabilityZones=['us-east-1','us-east-2'],
                                                        SecurityGroups=[self.security_groups[sg]])
     
+    def generalWait(self, instance_id, wait_type):
+        """
+        Waiter generico.
+        instance_id: id da instancia a ser esperada
+        wait_type: motivo do wait
+        """
+        waiter = self.client.get_waiter(wait_type)
+        waiter.wait(InstanceIds=[instance_id])
+
+    def filterInstancesByTag(self, tag_key, tag_value):
+        """
+        Filtra instâncias por tag.
+        tag_key: Chave da tag (e.g. "Name")
+        tag_value: Valor da tag (e.g. "rafaPostgres")
+        """
+        custom_f = [{
+            'Name': f'tag:{tag_key}',
+            'Values': [tag_value]
+        }]
+        filtro_insts = []
+        filtered = self.client.describe_instances(Filters=custom_f)
+        for instance in filtered["Reservations"][0]["Instances"]:
+            filtro_insts.append(instance["InstanceId"])
+
+        return filtro_insts
+
     def terminateInstances(self, t_instances=None):
         """
         Encerra todas as instâncias que são passadas no argumento da função.
@@ -152,14 +180,14 @@ class Cloud(object):
         if t_instances == None:
             t_instances = self.instances
         t_inst = []
+        instance_waiter = self.client.get_waiter('instance_terminated')
         for i in t_instances:
             print(f"Terminating instance: '{i}'")
              # self.instances[instance_id].terminate()
+            terminator = t_instances[i].terminate()
             print(terminator["TerminatingInstances"][0]["CurrentState"]["Name"])
             print(terminator["TerminatingInstances"][0]["CurrentState"]["Code"])
-            terminator = t_instances[i].terminate()
             # print("\t", terminator)
             t_inst.append(t_instances[i])
-        instance_waiter = self.client.get_waiter('instance_terminated')
-        instance_waiter.wait(InstanceIds=t_inst[i])
+        instance_waiter.wait(InstanceIds=t_inst)
             

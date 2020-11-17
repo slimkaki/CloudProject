@@ -1,7 +1,7 @@
 import boto3, time, json, paramiko, os
 from CloudConfig import Cloud
 
-def teste_vital():
+def main():
     # Carrega as credenciais
     with open("./credentials/credentials.json", "r") as file:
         secrets = json.load(file)
@@ -32,8 +32,8 @@ def teste_vital():
     myCloudNV.createSecurityGroup(sg_nv, [22, 8080]) # Django server
 
     # Cria as tags das instâncias
-    myTagsPostGres = {'ResourceType': 'instance','Tags': [{'Key': 'rafaPostgres','Value': 'Postgres'},]}
-    myTagsDjango = {'ResourceType': 'instance','Tags': [{'Key': 'rafaDjango','Value': 'Django'},]}
+    myTagsPostGres = {'ResourceType': 'instance','Tags': [{'Key': 'owner', 'Value': 'rafaelama'},{'Key': 'Name','Value': 'rafaPostgres'},]}
+    myTagsDjango = {'ResourceType': 'instance','Tags': [{'Key': 'owner', 'Value': 'rafaelama'},{'Key': 'Name','Value': 'rafaDjango'},]}
 
     # Cria a primeira instância do Postgres em Ohio
     postgres = myCloudOhio.createInstance('t2.micro', myTagsPostGres, sg_ohio, chave_ohio, open("./scripts/postgres.sh").read(), myCloudOhio.ami_ubuntu18_ohio)
@@ -50,45 +50,15 @@ def teste_vital():
     # Edita novamente o script para remover o IP
     editShellScript("./scripts/django.sh", ip_postgres, "<replace me with ip>")
     
+    # Espera a instância
+    # myCloudOhio.filterInstancesByTag("Name", "rafaPostgres")
+    myCloudNV.generalWait(django[0], "instance_status_ok")
     # Cria AMI do Django
-    # Mata a instância django
+    django_ami_id = myCloudNV.createAMIfromInstance(django[0], "rafa_django_ami")
+    print("AMI Django:", django_ami_id)
     # Cria novas instâncias com a AMI do django
     # Cria Load Balancer
-    print("IP Público Django:", myCloudNV.getIP(django[0]))
-
-def main():
-    with open("./credentials/credentials.json", "r") as file:
-        secrets = json.load(file)
-    
-    myCloudOhio = Cloud(secrets["AWSUSER"], secrets["AWSPASS"], 
-                    secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
-                    region="us-east-2")
-
-    chave = "botorafak"
-    sg_name = "sec_kaki_OHIO"
-    myCloudOhio.createRSA(chave)
-    # Cria grupo de seguranca: portas 22 e 5432 liberadas
-    myCloudOhio.createSecurityGroup(sg_name, [22, 80, 443, 5432, 8080])
-
-    # Cria instância em OHIO
-    myTags = {'ResourceType': 'instance','Tags': [{'Key': 'rafaPostgres','Value': 'Postgres'},]}
-    inst1 = myCloudOhio.createInstance('t2.micro', myTags, sg_name, chave, open("./scripts/postgres.sh").read(), myCloudOhio.ami_ubuntu18_ohio)
-
-    # Executa script postgresql
-    print("sleeping for 120 seconds")
-    t0 = time.time()
-    while (time.time()-t0 < 120):
-        print("> " + str(int(120-(time.time()-t0))) + " segundos ", end="\r")
-    print("just woke up!")
-
-    ip_postgres = myCloudOhio.getIP(inst1[0], "PrivateDnsName") 
-
-    editShellScript("./scripts/django.sh", "<replace me with ip>", ip_postgres)
-    myTags = {'ResourceType': 'instance','Tags': [{'Key': 'rafaDjango','Value': 'Django'},]}
-    inst2 = myCloudOhio.createInstance('t2.micro', myTags, sg_name, chave, open("./scripts/django.sh").read(), myCloudOhio.ami_ubuntu18_ohio)
-    print("\nInstancia Django:")
-    myCloudOhio.getIP(inst2[0])
-    editShellScript("./scripts/django.sh", ip_postgres, "<replace me with ip>")
+    print("\nIP Público Django:", myCloudNV.getIP(django[0]))
 
 def editShellScript(path, string1, string2):
     file_read = open(path, "rt")
@@ -100,4 +70,4 @@ def editShellScript(path, string1, string2):
     file_write.close()
 
 if __name__ == '__main__':
-    teste_vital()
+    main()

@@ -1,6 +1,4 @@
 boto3
 json
 time
-paramiko
-PyCryptodome
 os
