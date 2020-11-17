@@ -2,15 +2,11 @@
 
 Insper - Engenharia da Computação - 6° Semestre
 
-Computação em Nuvem
+Computação em Nuvem - 2020.2
 
 **Aluno:** Rafael Almada
 
 **Professor:** Raul Ikeda
-
-**Anotações:** https://www.notion.so/Projeto-Cloud-e08415816e3e479ab61cb5fd7c57a074
-
-___
 
 ## Objetivo do projeto
 
