@@ -20,6 +20,8 @@ Implementado para o sistema da *Amazon Web-Services* (AWS) e feito em Python, o 
 
 ### Como rodar o projeto
 
+  O usuário deverá antes de rodar, colocar suas credenciais da AWS em um arquivo chamado *credentials.json* que ficará no diretório *./config/credentials/* e tem a o formato apresentado no arquivo *credentials_template.json*
+
   ```sh
   ubuntu@linux:~/CloudProject$ sudo chmod +x start.sh
   ```
@@ -42,7 +44,7 @@ A lógica por trás deste deploy está em uma série de etapas:
 
   5. Após a instância do django estar preparada, é feita uma nova imagem a partir da mesma, podendo assim replicar a aplicação e preparando para a fase de load balancing e auto-scaling.
 
-  > Ainda a terminar documentação
+  > Ainda a terminar documentação...
 
 ### Distribuição do projeto:
 ```
@@ -53,8 +55,6 @@ A lógica por trás deste deploy está em uma série de etapas:
 │   ├── credentials
 │   │   ├── boto_rafa_nv.pem
 │   │   ├── boto_rafa_ohio.pem
-│   │   ├── botorafak
-│   │   ├── botorafak.pem
 │   │   ├── credentials.json
 │   │   └── credentials_template.json
 │   ├── main.py
