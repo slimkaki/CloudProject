@@ -33,8 +33,6 @@ class Cloud(object):
                                         region_name=self.region)
         self.ec2_resource = self.session.resource('ec2')
         self.client = self.session.client('ec2', region_name=self.region)
-        # self.ssm_client = boto3.client()
-        self.client_load_balancer = boto3.client('elb', region_name=self.region)
 
     def createRSA(self, keyname):
         """
@@ -135,17 +133,6 @@ class Cloud(object):
         self.ec2_resource.Image(ami['ImageId']).wait_until_exists()
         return ami['ImageId']
 
-
-    def createLoadBalancer(self, name, sg):
-        """
-        Cria um Load Balancer
-        name: nome do Load Balancer
-        sg: Security Group do Load Balancer 
-        """
-        self.client_load_balancer.create_load_balancer(LoadBalancerName=name,
-                                                       AvailabilityZones=['us-east-1','us-east-2'],
-                                                       SecurityGroups=[self.security_groups[sg]])
-    
     def generalWait(self, instance_id, wait_type):
         """
         Waiter generico.
@@ -191,3 +178,66 @@ class Cloud(object):
             t_inst.append(t_instances[i])
         instance_waiter.wait(InstanceIds=t_inst)
             
+class LoadBalancerConfig(object):
+    """
+    Classe destinada a administrar Load Balancer
+    """
+    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, regions):
+        # Credencias AWS
+        self.USER = AWS_USER
+        self.PASS = AWS_PASS
+        self.ACCESSKEY = AWS_ACCESS_KEY_ID
+        self.SECRETACCESSKEY = AWS_SECRET_ACCESS_KEY
+
+        # Variáveis globais:
+        self.regions = regions
+        self.myLoadBalancers = []
+
+        # Start client
+        self.start()
+
+    def start(self):
+        """
+        Inicia o client els (Elastic Load Balancer)
+        """
+        self.client = boto3.client('elb')
+
+    def createLoadBalancer(self, name, security_group):
+        """
+        Cria um Load Balancer
+        name: nome do Load Balancer
+        sg: Security Group do Load Balancer 
+        """
+        print("Criando Load Balancer...")
+        self.client.create_load_balancer(LoadBalancerName=name,
+                                            AvailabilityZones=self.regions,
+                                            SecurityGroups=[security_group])
+
+    def addInstances(self, name, instances_id):
+        """
+        Adiciona instâncias ao Load Balancer
+        name: Nome do Load Balancer
+        instances_id: ID da instância ou lista de IDs de instâncias a serem adicionadas.
+        """
+        if (type(instances_id) != list):
+            instances_id = [instances_id]
+        my_inst = []
+        for i in instances_id:
+            my_inst.append({'InstanceId': i})
+
+        self.client.register_instances_with_load_balancer(LoadBalancerName=name,
+                                                          Instances=my_inst)
+
+    def removeInstances(self, name, instances_id):
+        """
+        Remove instâncias do Load Balancer
+        name: Nome do Load Balancer
+        instances_id: ID da instância ou lista de IDs de instâncias a serem removidas.
+        """
+        if (type(instances_id) != list):
+            instances_id = [instances_id]
+        my_inst = []
+        for i in instances_id:
+            my_inst.append({'InstanceId': i})
+        self.client.deregister_instances_from_load_balancer(LoadBalancerName=name,
+                                                          Instances=my_inst)
