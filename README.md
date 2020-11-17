@@ -20,8 +20,13 @@ Implementado para o sistema da *Amazon Web-Services* (AWS) e feito em Python, o 
 
 ### Como rodar o projeto
 
-  > sudo chmod +x start.sh
-  > ./start.sh
+  ```sh
+  ubuntu@linux:~/CloudProject$ sudo chmod +x start.sh
+  ```
+
+  ```sh
+  ubuntu@linux:~/CloudProject$ ./start.sh
+  ```
 
 ### Operacionalização
 
@@ -40,6 +45,7 @@ A lógica por trás deste deploy está em uma série de etapas:
   > Ainda a terminar documentação
 
 ### Distribuição do projeto:
+```
 .
 ├── README.md
 ├── config
@@ -58,6 +64,7 @@ A lógica por trás deste deploy está em uma série de etapas:
 │       └── postgres.sh
 ├── requirements.txt
 └── start.sh
+```
 
 ___
 
