@@ -1,4 +1,4 @@
-import boto3, time, json, paramiko, os
+import boto3, time, json, os
 from CloudConfig import Cloud, LoadBalancerConfig
 
 def main():
@@ -16,11 +16,10 @@ def main():
                         secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
                         region="us-east-2")
 
-
-
+    # Inicia o Load Balancer
     myLoadBalancer = LoadBalancerConfig(secrets["AWSUSER"], secrets["AWSPASS"], 
                                         secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
-                                        regions=["us-east-1","us-east-2"])
+                                        regions=["us-east-1"])
 
     # Salvando alguns nomes em variáveis
     chave_ohio = "boto_rafa_ohio"  # Chave RSA OHIO 
@@ -42,7 +41,7 @@ def main():
     myTagsDjango = {'ResourceType': 'instance','Tags': [{'Key': 'owner', 'Value': 'rafaelama'},{'Key': 'Name','Value': 'rafaDjango'},]}
 
     # Cria a primeira instância do Postgres em Ohio
-    postgres = myCloudOhio.createInstance('t2.micro', myTagsPostGres, sg_ohio, chave_ohio, open("./scripts/postgres.sh").read(), myCloudOhio.ami_ubuntu18_ohio)
+    postgres = myCloudOhio.createInstance('t2.micro', myTagsPostGres, sg_ohio, chave_ohio, myCloudOhio.ami_ubuntu18_ohio, open("./scripts/postgres.sh").read())
     
     # Guarda o IP público do Postgres
     ip_postgres = myCloudOhio.getIP(postgres[0], "PublicIpAddress")
@@ -51,7 +50,7 @@ def main():
     editShellScript("./scripts/django.sh", "<replace me with ip>", ip_postgres)
     
     # Cria instância do Django
-    django = myCloudNV.createInstance('t2.micro', myTagsDjango, sg_nv, chave_nv, open("./scripts/django.sh").read(), myCloudOhio.ami_ubuntu18_nv)
+    django = myCloudNV.createInstance('t2.micro', myTagsDjango, sg_nv, chave_nv, myCloudOhio.ami_ubuntu18_nv, open("./scripts/django.sh").read())
     
     # Edita novamente o script para remover o IP
     editShellScript("./scripts/django.sh", ip_postgres, "<replace me with ip>")
@@ -64,16 +63,29 @@ def main():
     django_ami_id = myCloudNV.createAMIfromInstance(django[0], "rafa_django_ami")
     print("AMI Django:", django_ami_id)
 
-    django2 = myCloudNV.createInstance('t2.micro', myTagsDjango, sg_nv, chave_nv, open("./scripts/django.sh").read(), myCloudOhio.ami_ubuntu18_nv)
+    myTagsDjango2 = {'ResourceType': 'instance','Tags': [{'Key': 'owner', 'Value': 'rafaelama'},{'Key': 'Name','Value': 'rafaDjango2'},]}
+    django2 = myCloudNV.createInstance('t2.micro', myTagsDjango2, sg_nv, chave_nv, django_ami_id)
     
     insts = [django, django2]
     loadBalancerNV = "RafaLoadBalancer"
-    myLoadBalancer.createLoadBalancer(loadBalancerNV, myCloudNV.security_groups[sg_nv])
+    myCloudNV.getSubnets(insts)
+    myLoadBalancer.createLoadBalancer(loadBalancerNV, myCloudNV.subnets, myCloudNV.security_groups[sg_nv]["GroupId"])
     
     myLoadBalancer.addInstances(loadBalancerNV, insts)
     # Cria novas instâncias com a AMI do django
     # Cria Load Balancer
     print("\nIP Público Django:", myCloudNV.getIP(django[0]))
+
+def test_loadBalancer():
+    with open("./credentials/credentials.json", "r") as file:
+        secrets = json.load(file)
+    myLoadBalancer = LoadBalancerConfig(secrets["AWSUSER"], secrets["AWSPASS"], 
+                                        secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
+                                        regions=["us-east-1"])
+    loadBalancerNV = "RafaLoadBalancer"
+    insts = ["i-02898328875efd8d8", "i-0f603cfc135ab4218"]
+    myLoadBalancer.createLoadBalancer(loadBalancerNV, "sg-0e9b298c3b1fa1a43")
+    myLoadBalancer.addInstances(loadBalancerNV, insts)
 
 def editShellScript(path, string1, string2):
     file_read = open(path, "rt")

@@ -1,4 +1,4 @@
-import boto3, json, time, paramiko, os
+import boto3, json, time, os
 
 class Cloud(object):
     """
@@ -19,6 +19,7 @@ class Cloud(object):
         self.ami_ubuntu18_nv = "ami-0817d428a6fb68645"
         self.ami_ubuntu18_ohio = "ami-0dd9f0e7df0f0a138"
         self.local_ami = {}
+        self.subnets = []
         
         # Start session
         self.start()
@@ -89,7 +90,7 @@ class Cloud(object):
         except Exception as e:
             print(f"Client Error: {e}")
 
-    def createInstance(self, instanceType, tags, secGroup, myKey, user_data, ami, numInst = 1):
+    def createInstance(self, instanceType, tags, secGroup, myKey, ami, user_data = None, numInst = 1):
         """
         Cria uma nova instância.
         instanceType: flavor da instância (e.g. t2.micro, t2.large, ...)
@@ -100,15 +101,23 @@ class Cloud(object):
         numInst (opcional): número de instâncias iguais a serem criadas
         """
         print("Criando Instancia:")
-        instance = self.ec2_resource.create_instances(ImageId=ami,
-                                                      MinCount=numInst,
-                                                      MaxCount=numInst,
-                                                      InstanceType=instanceType,
-                                                      KeyName=myKey,
-                                                      TagSpecifications=[tags,],
-                                                      SecurityGroupIds=[secGroup],
-                                                      UserData=user_data)
-        
+        if (user_data == None):
+            instance = self.ec2_resource.create_instances(ImageId=ami,
+                                                          MinCount=numInst,
+                                                          MaxCount=numInst,
+                                                          InstanceType=instanceType,
+                                                          KeyName=myKey,
+                                                          TagSpecifications=[tags,],
+                                                          SecurityGroupIds=[secGroup])
+        else:
+            instance = self.ec2_resource.create_instances(ImageId=ami,
+                                                          MinCount=numInst,
+                                                          MaxCount=numInst,
+                                                          InstanceType=instanceType,
+                                                          KeyName=myKey,
+                                                          TagSpecifications=[tags,],
+                                                          SecurityGroupIds=[secGroup],
+                                                          UserData=user_data)
         new_insts = []
         for i in range(numInst):
             new_insts.append(instance[i].instance_id)
@@ -119,6 +128,24 @@ class Cloud(object):
         instance_waiter.wait(InstanceIds=new_insts)
         print("Retomando atividades!")
         return new_insts
+
+    def runInstancesFromNewAMI(self, instanceType, myKey, secGroup, ami, tags, numInst=1):
+        conn = self.client.run_instances(InstanceType=instanceType,
+                                         KeyName=myKey,
+                                         MinCount=numInst,
+                                         MaxCount=numInst,
+                                         ImageId=ami,
+                                         SecurityGroupIds=secGroup,
+                                         TagSpecifications=tags)
+        new_inst = []
+        for i in conn["Instances"]:
+            new_inst.append(i["InstanceId"])
+
+        print("Aguardando instâncias...")
+        instance_waiter = self.client.get_waiter('instance_running')
+        instance_waiter.wait(InstanceIds=new_inst)
+        print("Retomando atividades!")
+        return new_inst
     
     def createAMIfromInstance(self, instance_id, name):
         """
@@ -126,11 +153,14 @@ class Cloud(object):
         instance_id: id da instância
         name: nome da imagem
         """
+        print(f"Começando a criar imagem da instancia: {instance_id}")
         ami = self.client.create_image(InstanceId=instance_id, Name=name)
         self.local_ami[name] = ami['ImageId']
-        image = self.ec2_resource.get_all_images(image_ids=[ami['ImageId']][0])
         print("Esperando para que a imagem fique pronta...")
         self.ec2_resource.Image(ami['ImageId']).wait_until_exists()
+        waiter = self.client.get_waiter('image_available')
+        waiter.wait(ImageIds=[ami['ImageId']])
+        print("Imagem pronta!")
         return ami['ImageId']
 
     def generalWait(self, instance_id, wait_type):
@@ -158,6 +188,16 @@ class Cloud(object):
             filtro_insts.append(instance["InstanceId"])
 
         return filtro_insts
+
+    def getSubnets(self, inst_id):
+        """
+        Salva os ID's das subnets em uma lista
+        inst_id: Lista com os id's das instâncias
+        """
+        for i in inst_id:
+            self.subnets.append(self.instances[i]["SubnetId"])
+
+
 
     def terminateInstances(self, t_instances=None):
         """
@@ -200,18 +240,27 @@ class LoadBalancerConfig(object):
         """
         Inicia o client els (Elastic Load Balancer)
         """
-        self.client = boto3.client('elb')
+        print("Iniciando Load Balancer...")
+        self.client = boto3.client('elb', 
+                                   region_name="us-east-1", 
+                                   aws_access_key_id=self.ACCESSKEY,
+                                   aws_secret_access_key=self.SECRETACCESSKEY)
 
-    def createLoadBalancer(self, name, security_group):
+    def createLoadBalancer(self, name, subnets, security_group):
         """
         Cria um Load Balancer
         name: nome do Load Balancer
+        subnets: Lista com os id's das subnets das instâncias
         sg: Security Group do Load Balancer 
         """
         print("Criando Load Balancer...")
         self.client.create_load_balancer(LoadBalancerName=name,
-                                            AvailabilityZones=self.regions,
-                                            SecurityGroups=[security_group])
+                                        Listeners=[{'Protocol': 'HTTP',
+                                                    'LoadBalancerPort': 80,
+                                                    'InstanceProtocol' : 'TCP',
+                                                    'InstancePort': 8080},],
+                                        Subnets=subnets,
+                                        SecurityGroups=[security_group])
 
     def addInstances(self, name, instances_id):
         """
@@ -219,6 +268,7 @@ class LoadBalancerConfig(object):
         name: Nome do Load Balancer
         instances_id: ID da instância ou lista de IDs de instâncias a serem adicionadas.
         """
+        print("Adicionando instâncias ao load balancer...")
         if (type(instances_id) != list):
             instances_id = [instances_id]
         my_inst = []
@@ -228,12 +278,17 @@ class LoadBalancerConfig(object):
         self.client.register_instances_with_load_balancer(LoadBalancerName=name,
                                                           Instances=my_inst)
 
+        waiter = self.client.get_waiter('instance_deregistered')
+        waiter.wait(LoadBalancerName=name, Instances=my_inst)
+        print("Instâncias adicionadas!")
+
     def removeInstances(self, name, instances_id):
         """
         Remove instâncias do Load Balancer
         name: Nome do Load Balancer
         instances_id: ID da instância ou lista de IDs de instâncias a serem removidas.
         """
+        print("Remvendo instâncias do load balancer...")
         if (type(instances_id) != list):
             instances_id = [instances_id]
         my_inst = []
@@ -241,3 +296,6 @@ class LoadBalancerConfig(object):
             my_inst.append({'InstanceId': i})
         self.client.deregister_instances_from_load_balancer(LoadBalancerName=name,
                                                           Instances=my_inst)
+        waiter = self.client.get_waiter('instance_deregistered')
+        waiter.wait(LoadBalancerName=name, Instances=my_inst)
+        print("Instâncias removidas!")
