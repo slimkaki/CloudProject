@@ -1,6 +1,6 @@
 import boto3, json, time, os
 
-class Cloud(object):
+class EC2Cloud(object):
     """
     Classe com o objetivo de criar a automatização do processo e dar deploy da aplicação na AWS
     """
@@ -34,6 +34,34 @@ class Cloud(object):
                                         region_name=self.region)
         self.ec2_resource = self.session.resource('ec2')
         self.client = self.session.client('ec2', region_name=self.region)
+
+    def cleanUp(self, tags, sg_name, key_name):
+        # Vê todas as instâncias que foram feitas
+        print(f"Cleaning up {self.region}...")
+        inst = self.filterInstancesByTag(tags["Tags"][1]["Key"], tags["Tags"][1]["Value"])
+        # Terminate instances
+        if inst:
+            print("Desligando instâncias existentes...", end="\r")
+            self.terminateInstances(inst)
+
+        # Apaga Security Group
+        print("Apagando Security Groups existentes...", end="\r")
+        sg = self.client.describe_security_groups(GroupNames=[sg_name])
+        if sg:
+            for sec in sg["SecurityGroups"]:
+                self.client.delete_security_group(GroupId=sec["GroupId"], GroupName=sec["GroupName"])
+        
+        # Apaga chaves da AWS
+        keys = self.client.describe_key_pairs(KeyNames=[key_name])
+        if keys:
+            print("Apagando chaves existentes...          ", end="\r")
+            for k in keys["KeyPairs"]:
+                self.client.delete_key_pair(KeyName=key_name)
+
+        print("Tudo pronto!                            ", end="\r")
+
+
+
 
     def createRSA(self, keyname):
         """
@@ -184,8 +212,9 @@ class Cloud(object):
         }]
         filtro_insts = []
         filtered = self.client.describe_instances(Filters=custom_f)
-        for instance in filtered["Reservations"][0]["Instances"]:
-            filtro_insts.append(instance["InstanceId"])
+        for res in range(len(filtered["Reservations"])):
+            for instance in filtered["Reservations"][res]["Instances"]:
+                filtro_insts.append(instance["InstanceId"])
 
         return filtro_insts
 
@@ -197,32 +226,21 @@ class Cloud(object):
         for i in inst_id:
             self.subnets.append(self.instances[i]["SubnetId"])
 
-
-
     def terminateInstances(self, t_instances=None):
         """
         Encerra todas as instâncias que são passadas no argumento da função.
-        t_instances (opcional): encerra todas instâncias com esses id's
+        t_instances (opcional): encerra todas instâncias com esses id's.
+                                Lista de strings ou string com um ID único. 
         """
-        if t_instances == None:
-            t_instances = self.instances
-        t_inst = []
         instance_waiter = self.client.get_waiter('instance_terminated')
-        for i in t_instances:
-            print(f"Terminating instance: '{i}'")
-             # self.instances[instance_id].terminate()
-            terminator = t_instances[i].terminate()
-            print(terminator["TerminatingInstances"][0]["CurrentState"]["Name"])
-            print(terminator["TerminatingInstances"][0]["CurrentState"]["Code"])
-            # print("\t", terminator)
-            t_inst.append(t_instances[i])
-        instance_waiter.wait(InstanceIds=t_inst)
+        self.client.terminate_instances(InstanceIds=t_instances)
+        instance_waiter.wait(InstanceIds=t_instances)
             
 class LoadBalancerConfig(object):
     """
     Classe destinada a administrar Load Balancer
     """
-    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, regions):
+    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region):
         # Credencias AWS
         self.USER = AWS_USER
         self.PASS = AWS_PASS
@@ -230,7 +248,7 @@ class LoadBalancerConfig(object):
         self.SECRETACCESSKEY = AWS_SECRET_ACCESS_KEY
 
         # Variáveis globais:
-        self.regions = regions
+        self.region = region
         self.myLoadBalancers = []
 
         # Start client
@@ -242,9 +260,15 @@ class LoadBalancerConfig(object):
         """
         print("Iniciando Load Balancer...")
         self.client = boto3.client('elb', 
-                                   region_name="us-east-1", 
+                                   region_name=self.region, 
                                    aws_access_key_id=self.ACCESSKEY,
                                    aws_secret_access_key=self.SECRETACCESSKEY)
+
+    def cleanLoadBalancers(self):
+        """
+        Deleta todos os load balancers que possuem 
+        """
+        return 0
 
     def createLoadBalancer(self, name, subnets, security_group):
         """
@@ -299,3 +323,31 @@ class LoadBalancerConfig(object):
         waiter = self.client.get_waiter('instance_deregistered')
         waiter.wait(LoadBalancerName=name, Instances=my_inst)
         print("Instâncias removidas!")
+
+class AutoScaleConfig(object):
+    """
+    Classe destinada a administrar o auto-scaling
+    """
+    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region):
+        # Credencias AWS
+        self.USER = AWS_USER
+        self.PASS = AWS_PASS
+        self.ACCESSKEY = AWS_ACCESS_KEY_ID
+        self.SECRETACCESSKEY = AWS_SECRET_ACCESS_KEY
+
+        # Variáveis globais:
+        self.region = region
+        self.start()
+
+    def start(self):
+        self.client = boto3.client('autoscaling',
+                                   region_name=self.region, 
+                                   aws_access_key_id=self.ACCESSKEY,
+                                   aws_secret_access_key=self.SECRETACCESSKEY)
+    
+    def createAutoScalingGroup(self, name, inst, lb_name, tags, maxSize=5):
+        self.client.create_auto_scaling_group(AutoScalingGroupName=name,
+                                              MinSize=1,
+                                              MaxSize=maxSize,
+                                              InstanceId=inst,
+                                              LoadBalancerNames=[lb_name])
