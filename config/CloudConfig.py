@@ -350,4 +350,10 @@ class AutoScaleConfig(object):
                                               MinSize=1,
                                               MaxSize=maxSize,
                                               InstanceId=inst,
+                                              DesiredCapacity=1,
                                               LoadBalancerNames=[lb_name])
+        self.auto_scale_name = name
+
+    def attachInstances(self, instances):
+        self.client.attach_instances(InstanceIds=instances,
+                                     AutoScalingGroupName=self.auto_scale_name)

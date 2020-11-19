@@ -41,6 +41,12 @@ def main():
                         'Value': 'rafaPostgres'
                         },]
                     }
+    ### Nome do Auto Scaling
+    auto_scale_name_NV = "rafaAutoScalerNV"
+
+    ### Nome do Load Balancer
+    loadBalancer_name_NV = "RafaLoadBalancer"
+
     # Inicia sessão em NORTH VIRGINIA
     myCloudNV = EC2Cloud(secrets["AWSUSER"], secrets["AWSPASS"], 
                       secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
@@ -62,7 +68,7 @@ def main():
                                         secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
                                         region="us-east-1")
 
-    myAutoScaler = AutoScaleConfig(secrets["AWSUSER"], secrets["AWSPASS"], 
+    myAutoScalerNV = AutoScaleConfig(secrets["AWSUSER"], secrets["AWSPASS"], 
                                    secrets["ACCESSKEYID"], secrets["SECRETACCESSKEY"],
                                    region="us-east-1")
 
@@ -100,12 +106,19 @@ def main():
     # myTagsDjango2 = {'ResourceType': 'instance','Tags': [{'Key': 'owner', 'Value': 'rafaelama'},{'Key': 'Name','Value': 'rafaDjango2'},]}
     # django2 = myCloudNV.createInstance('t2.micro', myTagsDjango2, sg_nv, chave_nv, django_ami_id)
     
-    insts = [django, django2]
-    loadBalancerNV = "RafaLoadBalancer"
+    insts = [django]#, django2]
+
+    # Guarda o ID das subnets das instâncias
     myCloudNV.getSubnets(insts)
-    myLoadBalancer.createLoadBalancer(loadBalancerNV, myCloudNV.subnets, myCloudNV.security_groups[sg_nv]["GroupId"])
+
+    # Cria o Load Balancer
+    myLoadBalancer.createLoadBalancer(loadBalancer_name_NV, myCloudNV.subnets, myCloudNV.security_groups[sg_nv]["GroupId"])
     
-    myLoadBalancer.addInstances(loadBalancerNV, insts)
+    # Cria o Grupo de Auto Scaling
+    myAutoScalerNV.createAutoScalingGroup(auto_scale_name_NV, django, loadBalancer_name_NV, myTagsDjango)
+    
+    # Adiciona as instâncias no Load Balancer
+    myLoadBalancer.addInstances(loadBalancer_name_NV, insts)
     # Cria novas instâncias com a AMI do django
     # Cria Load Balancer
     print("\nIP Público Django:", myCloudNV.getIP(django[0]))
