@@ -37,31 +37,33 @@ class EC2Cloud(object):
 
     def cleanUp(self, tags, sg_name, key_name):
         # Vê todas as instâncias que foram feitas
-        print(f"Cleaning up {self.region}...")
+        print(f"Limpando {self.region}...")
         inst = self.filterInstancesByTag(tags["Tags"][1]["Key"], tags["Tags"][1]["Value"])
         # Terminate instances
         if inst:
             print("Desligando instâncias existentes...", end="\r")
             self.terminateInstances(inst)
-
+        # Apaga chaves da AWS
+        try:
+            keys = self.client.describe_key_pairs(KeyNames=[key_name])
+            if keys:
+                print("Apagando chaves existentes...        ", end="\r")
+                for k in keys["KeyPairs"]:
+                    self.client.delete_key_pair(KeyName=key_name)
+        except:
+            print("Key Pair não existe...               ", end="\r")
+        
         # Apaga Security Group
         print("Apagando Security Groups existentes...", end="\r")
-        sg = self.client.describe_security_groups(GroupNames=[sg_name])
-        if sg:
-            for sec in sg["SecurityGroups"]:
-                self.client.delete_security_group(GroupId=sec["GroupId"], GroupName=sec["GroupName"])
-        
-        # Apaga chaves da AWS
-        keys = self.client.describe_key_pairs(KeyNames=[key_name])
-        if keys:
-            print("Apagando chaves existentes...          ", end="\r")
-            for k in keys["KeyPairs"]:
-                self.client.delete_key_pair(KeyName=key_name)
+        try:
+            sg = self.client.describe_security_groups(GroupNames=[sg_name])
+            if sg:
+                for sec in sg["SecurityGroups"]:
+                    self.client.delete_security_group(GroupId=sec["GroupId"], GroupName=sec["GroupName"])
+        except:
+            print("SG não existe...                       ", end="\r")
 
-        print("Tudo pronto!                            ", end="\r")
-
-
-
+        print("Tudo pronto!                              ")
 
     def createRSA(self, keyname):
         """
@@ -107,7 +109,7 @@ class EC2Cloud(object):
         IPperm = []
         for p in ports:
             IPperm.append({'IpProtocol': 'tcp','FromPort': p,'ToPort': p,'IpRanges':[{'CidrIp': '0.0.0.0/0'}]})
-        print("Criando o grupo de segurança:")
+        print("Criando o grupo de segurança...")
         response = self.client.describe_vpcs()
         vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')
         try:
@@ -115,6 +117,7 @@ class EC2Cloud(object):
             group_id = response['GroupId']
             self.client.authorize_security_group_ingress(GroupId=group_id, IpPermissions = IPperm)
             self.security_groups[group_name] = response
+            print(f"Grupo de segurança {group_name} criado com sucesso em {self.region}")
         except Exception as e:
             print(f"Client Error: {e}")
 
@@ -128,7 +131,7 @@ class EC2Cloud(object):
         ami: Imagem para criar a instância
         numInst (opcional): número de instâncias iguais a serem criadas
         """
-        print("Criando Instancia:")
+        print("Criando Instancia...")
         if (user_data == None):
             instance = self.ec2_resource.create_instances(ImageId=ami,
                                                           MinCount=numInst,
@@ -150,7 +153,6 @@ class EC2Cloud(object):
         for i in range(numInst):
             new_insts.append(instance[i].instance_id)
             self.instances[instance[i].instance_id] = instance[0]
-            print(instance[0])
         print("Aguardando instâncias...")
         instance_waiter = self.client.get_waiter('instance_running')
         instance_waiter.wait(InstanceIds=new_insts)
@@ -224,7 +226,7 @@ class EC2Cloud(object):
         inst_id: Lista com os id's das instâncias
         """
         for i in inst_id:
-            self.subnets.append(self.instances[i]["SubnetId"])
+            self.subnets.append(self.instances[i].subnet_id)
 
     def terminateInstances(self, t_instances=None):
         """
@@ -240,7 +242,7 @@ class LoadBalancerConfig(object):
     """
     Classe destinada a administrar Load Balancer
     """
-    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region):
+    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region, elb_name):
         # Credencias AWS
         self.USER = AWS_USER
         self.PASS = AWS_PASS
@@ -250,6 +252,7 @@ class LoadBalancerConfig(object):
         # Variáveis globais:
         self.region = region
         self.myLoadBalancers = []
+        self.elb_name = elb_name
 
         # Start client
         self.start()
@@ -268,9 +271,13 @@ class LoadBalancerConfig(object):
         """
         Deleta todos os load balancers que possuem 
         """
-        return 0
+        print("Limpando Load Balancers...")
+        try:
+            self.client.delete_load_balancer(LoadBalancerName=self.elb_name)
+        except:
+            print(f"Nenhum Load Balancer chamado {self.elb_name} encontrado")
 
-    def createLoadBalancer(self, name, subnets, security_group):
+    def createLoadBalancer(self, subnets, security_group):
         """
         Cria um Load Balancer
         name: nome do Load Balancer
@@ -278,13 +285,12 @@ class LoadBalancerConfig(object):
         sg: Security Group do Load Balancer 
         """
         print("Criando Load Balancer...")
-        self.client.create_load_balancer(LoadBalancerName=name,
-                                        Listeners=[{'Protocol': 'HTTP',
-                                                    'LoadBalancerPort': 80,
-                                                    'InstanceProtocol' : 'TCP',
-                                                    'InstancePort': 8080},],
-                                        Subnets=subnets,
-                                        SecurityGroups=[security_group])
+        self.DNSname = self.client.create_load_balancer(LoadBalancerName=self.elb_name,
+                                                        Listeners=[{'Protocol': 'HTTP',
+                                                                    'LoadBalancerPort': 80,
+                                                                    'InstancePort': 8080},],
+                                                        Subnets=subnets,
+                                                        SecurityGroups=[security_group])
 
     def addInstances(self, name, instances_id):
         """
@@ -328,7 +334,7 @@ class AutoScaleConfig(object):
     """
     Classe destinada a administrar o auto-scaling
     """
-    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region):
+    def __init__(self, AWS_USER, AWS_PASS, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, region, as_name):
         # Credencias AWS
         self.USER = AWS_USER
         self.PASS = AWS_PASS
@@ -337,6 +343,7 @@ class AutoScaleConfig(object):
 
         # Variáveis globais:
         self.region = region
+        self.name = as_name
         self.start()
 
     def start(self):
@@ -344,15 +351,31 @@ class AutoScaleConfig(object):
                                    region_name=self.region, 
                                    aws_access_key_id=self.ACCESSKEY,
                                    aws_secret_access_key=self.SECRETACCESSKEY)
-    
-    def createAutoScalingGroup(self, name, inst, lb_name, tags, maxSize=5):
-        self.client.create_auto_scaling_group(AutoScalingGroupName=name,
+
+    def createAutoScalingGroup(self, inst, lb_name, tags, maxSize=5):
+        if (type(inst) == list):
+            inst = inst[0]
+        self.client.create_auto_scaling_group(AutoScalingGroupName=self.name,
                                               MinSize=1,
                                               MaxSize=maxSize,
                                               InstanceId=inst,
                                               DesiredCapacity=1,
                                               LoadBalancerNames=[lb_name])
-        self.auto_scale_name = name
+
+    def deleteAutoScalingGroup(self):
+        try:
+            self.client.delete_auto_scaling_group(AutoScalingGroupName=self.name,
+                                            ForceDelete=True)
+            print(f"Auto-Scaling Group de nome {self.name} foi deletado!")
+        except:
+            print("Nenhum Auto-Scaling Group foi encontrado!")
+
+    def deleteLaunchConfig(self):
+        try:
+            self.client.delete_launch_configuration(LaunchConfigurationName=self.name)
+            print("Launch Configuration do Auto Scaling Group foi deletada!")
+        except:
+            print("Não foi possível deletar o Launch Configuration do Auto Scaling Group")
 
     def attachInstances(self, instances):
         self.client.attach_instances(InstanceIds=instances,
