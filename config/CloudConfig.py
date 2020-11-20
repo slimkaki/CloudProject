@@ -375,7 +375,7 @@ class AutoScaleConfig(object):
             self.client.delete_launch_configuration(LaunchConfigurationName=self.name)
             print("Launch Configuration do Auto Scaling Group foi deletada!")
         except:
-            print("Não foi possível deletar o Launch Configuration do Auto Scaling Group")
+            print("Não foi possível encontrar o Launch Configuration do Auto Scaling Group")
 
     def attachInstances(self, instances):
         self.client.attach_instances(InstanceIds=instances,

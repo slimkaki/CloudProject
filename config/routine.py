@@ -123,8 +123,8 @@ def main():
     # Cria Load Balancer
     print("\nDNS Load Balancer:", myLoadBalancer.DNSname["DNSName"])
     print(f"\n Para acessar: http://{myLoadBalancer.DNSname['DNSName']}/admin")
-    print(f"(será necessário esperar algo entre 10 e 30 minutos)")
-    
+    print(f"(será necessário esperar algo entre 5 e 15 minutos)")
+
 def editShellScript(path, string1, string2):
     file_read = open(path, "rt")
     data = file_read.read()
