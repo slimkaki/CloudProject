@@ -14,6 +14,12 @@ Este projeto tem por objetivo implementar o deploy de uma aplicação que utiliz
 
 Implementado para o sistema da *Amazon Web-Services* (AWS) e feito em Python, o código utiliza das funcionalidades da biblioteca boto3 para interagir com o sistema em nuvem.
 
+### Aplicação REST API
+
+A aplicação escolhida para este projeto, comoo já especificado antes, foi um código em Django e um servidor Postgres.
+
+O código que roda no Django, com todas as operações da api pode ser encontrado no repositório **http://github.com/slimkaki/tasks**.
+
 ### Como rodar o projeto
 
   O usuário deverá antes de rodar, colocar suas credenciais da AWS em um arquivo chamado *credentials.json* que ficará no diretório *./config/credentials/* e tem a o formato apresentado no arquivo *credentials_template.json*
