@@ -1,3 +1,11 @@
+############################
+# Código desenvolvido por  #
+#      Rafael Almada       #
+#   github.com/slimkaki    #
+# Engenharia da Computação #
+# Insper - 6o Sem - 2020.2 #
+############################
+
 import boto3, time, json, os
 from CloudConfig import EC2Cloud, LoadBalancerConfig, AutoScaleConfig
 
@@ -122,7 +130,7 @@ def main():
     # Cria novas instâncias com a AMI do django
     # Cria Load Balancer
     print("\nDNS Load Balancer:", myLoadBalancer.DNSname["DNSName"])
-    print(f"\n Para acessar: http://{myLoadBalancer.DNSname['DNSName']}/admin")
+    print(f"\n Para acessar: http://{myLoadBalancer.DNSname['DNSName']}/tasks")
     print(f"(será necessário esperar algo entre 5 e 15 minutos)")
 
 def editShellScript(path, string1, string2):

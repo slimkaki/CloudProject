@@ -12,6 +12,7 @@ def client(url, loop=True):
     print("====================================")
     print("Bem vindo ao client da API de Tasks!")
     print("====================================")
+    print(f"URL atual: {url}")
     desc = {"get all": "Retorna todas as tasks existentes",
             "get <id task>": "Retorna uma task única com id especificado",
             "post": "Cria uma task nova com os parametros especificados",
@@ -104,7 +105,7 @@ def client(url, loop=True):
         elif (entrada == "url"):
             print("Insira a nova url:")
             url = input("> ")
-            url = url + "/tasks/"
+            # url = url + "/tasks/"
 
         elif (entrada == "quit" or entrada == "exit"):
             print("Até mais!")
@@ -118,5 +119,5 @@ def client(url, loop=True):
             print(f"Comando '{entrada}' não identificado.")
             
 if __name__ == '__main__':
-    url = "http://rafa-load-balancer-1033912535.us-east-1.elb.amazonaws.com/" + "/tasks/"
+    url = "http://rafa-load-balancer-1033912535.us-east-1.elb.amazonaws.com/" + "tasks/"
     client(url)

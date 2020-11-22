@@ -1,3 +1,11 @@
+############################
+# Código desenvolvido por  #
+#      Rafael Almada       #
+#   github.com/slimkaki    #
+# Engenharia da Computação #
+# Insper - 6o Sem - 2020.2 #
+############################
+
 import boto3, time, json, os
 from CloudConfig import EC2Cloud, LoadBalancerConfig, AutoScaleConfig
 
