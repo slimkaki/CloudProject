@@ -18,6 +18,9 @@ def client(url, loop=True):
             "delete <id task>": "Deleta uma task especificada pelo id",
             "delete all": "Deleta todas as tasks",
             "update <id task>": "Atualiza uma task",
+            "url": "Inserir nova url da API",
+            "exit": "Sair deste client",
+            "quit": "Sair deste client",
             "help": "Mostra os comandos possíveis"}
     print("\nOs comandos disponíveis são os seguintes:")
 
@@ -98,6 +101,10 @@ def client(url, loop=True):
                     print("Não foi possível alterar a task em questão!")
             else:
                 print(f"Comando '{entrada}' não identificado.")
+        elif (entrada == "url"):
+            print("Insira a nova url:")
+            url = input("> ")
+            url = url + "/tasks/"
 
         elif (entrada == "quit" or entrada == "exit"):
             print("Até mais!")
@@ -110,10 +117,6 @@ def client(url, loop=True):
         else:
             print(f"Comando '{entrada}' não identificado.")
             
-        
-
-
-
 if __name__ == '__main__':
-    url =  "http://rafa-load-balancer-1033912535.us-east-1.elb.amazonaws.com" + "/tasks/"
+    url = "http://rafa-load-balancer-1033912535.us-east-1.elb.amazonaws.com/" + "/tasks/"
     client(url)
