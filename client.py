@@ -30,7 +30,7 @@ def client(url, loop=True):
         print(f"\t\t{desc[i]}\n")
 
     while loop:
-        entrada = input("> ")
+        entrada = input("tasks-api> ")
 
         if (entrada.split()[0] == "get" and len(entrada.split()) > 1):
             if (entrada.split()[1] == "all"):
@@ -49,13 +49,13 @@ def client(url, loop=True):
 
         elif (entrada == "post"):
             print("Qual o título da nova task?")
-            title = input("> ")
+            title = input("tasks-api> ")
             now = str(datetime.datetime.now())
             now_date = now.split(" ")[0]
             now_time = now.split(" ")[1].split(".")[0]
             pub_date = now_date + "T" + now_time + "Z"
             print("Qual a descrição da nova task?")
-            description = input("> ")
+            description = input("tasks-api> ")
             body = {"title": title, "pub_date": pub_date, "description": description}
             post = url + "post"
             try:
@@ -86,13 +86,13 @@ def client(url, loop=True):
             if (entrada.split()[1].isdigit()):
                 print(f"Alterando task {entrada.split()[1]}:")
                 print("Qual o novo título da task?")
-                title = input("> ")
+                title = input("tasks-api> ")
                 now = str(datetime.datetime.now())
                 now_date = now.split(" ")[0]
                 now_time = now.split(" ")[1].split(".")[0]
                 pub_date = now_date + "T" + now_time + "Z"
                 print("Qual a nova descrição da task?")
-                description = input("> ")
+                description = input("tasks-api> ")
                 my_update = url + "update/" + str(entrada.split()[1])
                 body = {"title": title, "pub_date": pub_date, "description": description}
                 try:
@@ -104,7 +104,7 @@ def client(url, loop=True):
                 print(f"Comando '{entrada}' não identificado.")
         elif (entrada == "url"):
             print("Insira a nova url:")
-            url = input("> ")
+            url = input("tasks-api> ")
             # url = url + "/tasks/"
 
         elif (entrada == "quit" or entrada == "exit"):
@@ -119,5 +119,5 @@ def client(url, loop=True):
             print(f"Comando '{entrada}' não identificado.")
             
 if __name__ == '__main__':
-    url = "http://rafa-load-balancer-1033912535.us-east-1.elb.amazonaws.com/" + "tasks/"
+    url = "rafa-load-balancer-331215668.us-east-1.elb.amazonaws.com/" + "tasks/"
     client(url)
