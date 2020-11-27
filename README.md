@@ -45,7 +45,7 @@ Assim poderá rodar o start para rodar o projeto em sua conta da AWS:
 Após o projeto estar rodando, ele poderá rodar o client para se comunicar com a api:
 
   ```bash
-  ubuntu@linux:~/CloudProject$ ./client
+  ubuntu@linux:~/CloudProject$ ./client-tasks
   ```
 
 Se desejar encerrar tudo o que foi feito e limpar sua AWS, poderá rodar o script clean_aws:
