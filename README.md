@@ -16,7 +16,7 @@ Implementado para o sistema da *Amazon Web-Services* (AWS) e feito em Python, o 
 
 ### Aplicação REST API
 
-A aplicação escolhida para este projeto, comoo já especificado antes, foi um código em Django e um servidor Postgres.
+A aplicação escolhida para este projeto, como já especificado antes, foi um código em Django e um servidor Postgres.
 
 O código que roda no Django, com todas as operações da api pode ser encontrado no repositório **http://github.com/slimkaki/tasks**.
 
@@ -27,31 +27,31 @@ O código que roda no Django, com todas as operações da api pode ser encontrad
 Primeiramente o usuário deverá tornar o arquivo install executável:
 
   ```bash
-  ubuntu@linux:~/CloudProject$ sudo chmod +x install.sh
+  ubuntu@linux:~/CloudProject$ sudo chmod +x install
   ```
 
 Em seguida deverá rodar o install, que tornará os outros scripts também executáveis
 
   ```bash
-  ubuntu@linux:~/CloudProject$ ./install.sh
+  ubuntu@linux:~/CloudProject$ ./install
   ```
 
 Assim poderá rodar o start para rodar o projeto em sua conta da AWS:
 
   ```bash
-  ubuntu@linux:~/CloudProject$ ./start.sh
+  ubuntu@linux:~/CloudProject$ ./start
   ```
 
 Após o projeto estar rodando, ele poderá rodar o client para se comunicar com a api:
 
   ```bash
-  ubuntu@linux:~/CloudProject$ ./client.sh
+  ubuntu@linux:~/CloudProject$ ./client
   ```
 
 Se desejar encerrar tudo o que foi feito e limpar sua AWS, poderá rodar o script clean_aws:
 
   ```bash
-  ubuntu@linux:~/CloudProject$ ./clean_aws.sh
+  ubuntu@linux:~/CloudProject$ ./clean_aws
   ```
 
 ### Operacionalização
