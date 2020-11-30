@@ -6,7 +6,7 @@
 # Insper - 6o Sem - 2020.2 #
 ############################
 
-import datetime, requests, json
+import datetime, requests, json, sys
 
 def client(url, loop=True):
     print("====================================")
@@ -129,5 +129,8 @@ def client(url, loop=True):
             print(f"Comando '{entrada}' não identificado.")
             
 if __name__ == '__main__':
-    url = "http://rafa-load-balancer-1231070759.us-east-1.elb.amazonaws.com/" + "tasks/"
+    if len(sys.argv) > 1:
+        url = sys.argv[1]
+    else:
+        url = "http://rafa-load-balancer-1231070759.us-east-1.elb.amazonaws.com/" + "tasks/"
     client(url)
