@@ -129,4 +129,4 @@ Requisitos do projeto:
   **6.** Utilizar uma linguagem de programação de livre escolha, embora seja sugerido usar uma que tenha
   bibliotecas para manipulação de Cloud prontas.
 
-  **7.** Entrega: Até a última aula (27/Nov/2020).
+  **7.** Entrega: Último commmit até dia 02/12 às 07h30.
