@@ -87,9 +87,9 @@ A lógica por trás deste deploy está em uma série de etapas:
 ```
 .
 ├── README.md
-├── clean_aws.sh
+├── clean_aws
 ├── client.py
-├── client.sh
+├── client-tasks
 ├── config
 │   ├── CloudConfig.py
 │   ├── clean.py
@@ -102,8 +102,8 @@ A lógica por trás deste deploy está em uma série de etapas:
 │   └── scripts
 │       ├── django.sh
 │       └── postgres.sh
-├── install.sh
-└── start.sh
+├── install
+└── start
 ```
 
 ___
