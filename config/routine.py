@@ -130,7 +130,7 @@ def main():
     # Cria novas instâncias com a AMI do django
     # Cria Load Balancer
     print("\nDNS Load Balancer:", myLoadBalancer.DNSname["DNSName"])
-    print(f"\n Para acessar: http://{myLoadBalancer.DNSname['DNSName']}/tasks")
+    print(f"\n Para acessar: http://{myLoadBalancer.DNSname['DNSName']}/tasks/")
     print(f"(será necessário esperar algo entre 5 e 15 minutos)")
 
 def editShellScript(path, string1, string2):

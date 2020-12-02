@@ -1,5 +1,4 @@
 #!/bin/bash
-# pip3 install -r requirements.txt
 cd config/
 python3 clean.py 1
 python3 routine.py
